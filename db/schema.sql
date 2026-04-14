@@ -1,0 +1,3 @@
+-- Define your schema here.
+-- sqlc reads this file to understand table structure when generating typed Go code.
+-- Run `sqlc generate` from this directory after adding tables and queries.
