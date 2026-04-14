@@ -10,12 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Strangebrewer/go-service-template/app"
-	"github.com/Strangebrewer/go-service-template/config"
-	"github.com/Strangebrewer/go-service-template/db_connection"
-	"github.com/Strangebrewer/go-service-template/example"
-	"github.com/Strangebrewer/go-service-template/middleware"
-	"github.com/Strangebrewer/go-service-template/server"
+	"github.com/Strangebrewer/go-tracer/config"
+	"github.com/Strangebrewer/go-tracer/db_connection"
+	"github.com/Strangebrewer/go-tracer/middleware"
+	"github.com/Strangebrewer/go-tracer/server"
+	"github.com/Strangebrewer/go-tracer/span"
 )
 
 func main() {
@@ -24,12 +23,14 @@ func main() {
 
 	cfg := config.Load()
 
-	pool, err := db_connection.NewPool(cfg.DatabaseURL)
+	ctx := context.Background()
+
+	client, col, err := db_connection.Connect(ctx, cfg.MongoURI, cfg.SpanTTLDays)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
-	defer pool.Close()
+	defer client.Disconnect(context.Background())
 
 	authMiddleware, err := middleware.RequireAuth(cfg.JWTPublicKey)
 	if err != nil {
@@ -37,16 +38,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	application := &app.Application{
-		ExampleStore: example.NewStore(pool),
-	}
+	serviceKeyMiddleware := middleware.RequireServiceKey(cfg.ServiceKey)
+
+	store := span.NewStore(col)
 
 	port := cfg.Port
 	if port == "" {
 		port = "8080"
 	}
 
-	srv := server.New(":"+port, cfg.AllowedOrigins, application, authMiddleware)
+	srv := server.New(":"+port, cfg.AllowedOrigins, store, authMiddleware, serviceKeyMiddleware)
 
 	go func() {
 		slog.Info("server starting", "port", port)
