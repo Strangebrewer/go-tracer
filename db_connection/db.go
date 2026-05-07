@@ -21,7 +21,7 @@ func Connect(ctx context.Context, mongoURI string, ttlDays int) (*mongo.Client, 
 
 	col := client.Database("tracer").Collection("spans")
 
-	ttlSeconds := int32(ttlDays * 86400)
+	ttlSeconds := int32(3600)
 	_, err = col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "startTime", Value: 1}},
