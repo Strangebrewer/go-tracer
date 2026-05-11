@@ -61,7 +61,7 @@ jobs:
             --max-instances 2 \
             --service-account ${{ env.SERVICE_ACCOUNT }} \
             --set-secrets MONGODB_URI=tracer-mongo-uri:latest,JWT_PUBLIC_KEY=jwt-public-key:latest,SERVICE_KEY=tracer-service-key:latest \
-            --set-env-vars ALLOWED_ORIGINS=${{ vars.ALLOWED_ORIGINS }},SPAN_TTL_DAYS=7 \
+            --set-env-vars ALLOWED_ORIGINS=${{ vars.ALLOWED_ORIGINS }},PUBSUB_PROJECT_ID=${{ vars.PUBSUB_PROJECT_ID }},SPAN_TTL_DAYS=7 \
             --allow-unauthenticated
 
   deploy-prod:
