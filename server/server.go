@@ -28,6 +28,7 @@ func New(addr string, allowedOrigins []string, store *span.Store, authMiddleware
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(slog.Default()))
 	r.Use(chimiddleware.Recoverer)
+	r.Use(middleware.StripAPIPrefix("/api/tracer"))
 
 	r.Get("/health", health.Handler)
 	r.Mount("/", span.Routes(store, serviceKeyMiddleware, authMiddleware))
