@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Port           string
 	MongoURI       string
+	DBName         string
 	JWTPublicKey   string
 	ServiceKey     string
 	AllowedOrigins []string
@@ -40,9 +41,15 @@ func Load() *Config {
 		_ = godotenv.Load(".env.local")
 	}
 
+	dbName := os.Getenv("DB_NAME")
+	if dbName == "" {
+		dbName = "tracer"
+	}
+
 	return &Config{
 		Port:           os.Getenv("PORT"),
 		MongoURI:       os.Getenv("MONGODB_URI"),
+		DBName:         dbName,
 		JWTPublicKey:   os.Getenv("JWT_PUBLIC_KEY"),
 		ServiceKey:     os.Getenv("SERVICE_KEY"),
 		AllowedOrigins: parseOrigins(os.Getenv("ALLOWED_ORIGINS")),

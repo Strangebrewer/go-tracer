@@ -25,7 +25,7 @@ func main() {
 
 	ctx := context.Background()
 
-	client, col, err := db_connection.Connect(ctx, cfg.MongoURI, cfg.SpanTTLDays)
+	client, col, err := db_connection.Connect(ctx, cfg.MongoURI, cfg.DBName, cfg.SpanTTLDays)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
 		os.Exit(1)
