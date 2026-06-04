@@ -51,7 +51,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to get connection string: %v", err)
 	}
 
-	client, col, err := db_connection.Connect(ctx, mongoURI, "tracer", 7)
+	client, col, err := db_connection.Connect(ctx, mongoURI, "tracer")
 	if err != nil {
 		log.Fatalf("failed to connect to mongo: %v", err)
 	}
