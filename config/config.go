@@ -2,8 +2,7 @@ package config
 
 import (
 	"os"
-	"strconv"
-	"strings"
+"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -15,7 +14,6 @@ type Config struct {
 	JWTPublicKey   string
 	ServiceKey     string
 	AllowedOrigins []string
-	SpanTTLDays    int
 }
 
 func parseOrigins(s string) []string {
@@ -23,17 +21,6 @@ func parseOrigins(s string) []string {
 		return nil
 	}
 	return strings.Split(s, ",")
-}
-
-func parseTTLDays(s string) int {
-	if s == "" {
-		return 7
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil || n <= 0 {
-		return 7
-	}
-	return n
 }
 
 func Load() *Config {
@@ -53,6 +40,5 @@ func Load() *Config {
 		JWTPublicKey:   os.Getenv("JWT_PUBLIC_KEY"),
 		ServiceKey:     os.Getenv("SERVICE_KEY"),
 		AllowedOrigins: parseOrigins(os.Getenv("ALLOWED_ORIGINS")),
-		SpanTTLDays:    parseTTLDays(os.Getenv("SPAN_TTL_DAYS")),
 	}
 }

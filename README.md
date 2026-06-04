@@ -1,18 +1,19 @@
-# go-service-template
+# go-tracer
 
-A GitHub template repository for Go REST services. Built as part of a larger portfolio project to establish consistent patterns across a multi-service architecture — and to deepen Go experience along the way.
-
-Use the **Use this template** button on GitHub to create a new service repo.
+A lightweight distributed tracing collector built as part of the [personal-enterprise](https://github.com/Strangebrewer/personal-enterprise) portfolio project. Services emit spans fire-and-forget after each operation; the frontend polls this service to retrieve the full trace and render it as a live request timeline.
 
 ---
 
-## After Creating a New Service
+## Role in the Architecture
 
-1. Update the module name in `go.mod` (e.g. `github.com/Strangebrewer/go-auth`)
-2. Find and replace all import paths from `go-service-template` to the new module name
-3. Replace the `example/` package with your domain packages
-4. Update `app/app.go` with your stores
-5. Update `server/routes.go` to mount your routes
+Every Go and NestJS service in the stack has the option to document its operations by sending a span to go-tracer after each request or Pub/Sub handler completes. The frontend generates a `traceId` (`crypto.randomUUID()`) before initiating an action, passes it downstream as an `X-Trace-ID` header, and polls `GET /traces/:traceId` once the action resolves.
+
+Two separate auth mechanisms keep internal traffic and browser traffic isolated:
+
+- `POST /spans` — requires an `X-Service-Key` header. Used by backend services only; never called from the browser.
+- `GET /traces/{traceId}` — requires a JWT Bearer token. Called by the frontend dashboard after an action completes.
+
+Spans auto-expire via a MongoDB TTL index on `startTime`. The default retention window is 1 hour, configurable via `SPAN_TTL_DAYS`.
 
 ---
 
@@ -20,10 +21,8 @@ Use the **Use this template** button on GitHub to create a new service repo.
 
 - **Language**: Go
 - **Router**: [chi](https://github.com/go-chi/chi)
-- **Database**: Postgres via [pgx](https://github.com/jackc/pgx)
-- **Query generation**: [sqlc](https://sqlc.dev) — SQL queries are written by hand and compiled to type-safe Go code
-- **Migrations**: [golang-migrate](https://github.com/golang-migrate/migrate)
-- **Auth**: Stateless RSA JWT validation — tokens are issued by a dedicated auth service and verified independently per service, with no cross-service call per request
+- **Database**: MongoDB Atlas via [mongo-driver v2](https://github.com/mongodb/mongo-go-driver) — no ORM
+- **Auth**: dual-mode — RSA JWT validation for browser clients; shared service key for internal service calls
 - **Logging**: `slog` with JSON output — Cloud Run ingests stdout directly into Cloud Logging
 
 ---
@@ -32,23 +31,43 @@ Use the **Use this template** button on GitHub to create a new service repo.
 
 ```
 cmd/
-  server/      ← entry point: wiring only, no business logic
-  migrate/     ← migration runner (up/down)
-app/           ← aggregates domain stores into a single Application struct
-server/        ← router setup and route registration
-config/        ← environment variable loading
-db_connection/ ← connection pool setup
-db/
-  schema.sql   ← source of truth for sqlc
-  queries/     ← named SQL queries for sqlc to compile
-  migrations/  ← golang-migrate up/down pairs
-  generated/   ← sqlc output (committed)
-health/        ← GET /health
-middleware/    ← request ID, structured logging, JWT auth
-example/       ← reference domain: model, store, handler, routes, integration test
+  server/        ← entry point: config, DB, middleware, server wiring
+config/          ← environment variable loading
+db_connection/   ← MongoDB connect, ping, index creation
+health/          ← GET /health
+middleware/      ← JWT auth, service key auth, request ID, structured logging
+server/          ← chi router setup and route registration
+span/            ← model, store, handler, routes, integration test
 ```
 
-Each domain follows the same four-file pattern — model, store, handler, routes — with a clean separation between HTTP concerns and data access. The store talks to the database; the handler talks to the store; the routes file wires them together. Auth is applied at the mount point, not buried inside individual route files.
+Indexes are created at startup — no migration step required.
+
+---
+
+## API
+
+| Method | Path                | Auth                   | Description                                            |
+| ------ | ------------------- | ---------------------- | ------------------------------------------------------ |
+| `POST` | `/spans`            | `X-Service-Key` header | Persist a new span                                     |
+| `GET`  | `/traces/{traceId}` | JWT Bearer             | Retrieve all spans for a trace, ordered by `startTime` |
+| `GET`  | `/health`           | none                   | Health check                                           |
+
+### Span shape
+
+```json
+{
+  "traceId": "string",
+  "spanId": "string",
+  "parentSpanId": "string (optional)",
+  "service": "string",
+  "operation": "string",
+  "status": "string",
+  "error": "string (optional)",
+  "startTime": "ISO 8601",
+  "endTime": "ISO 8601",
+  "metadata": {}
+}
+```
 
 ---
 
@@ -57,57 +76,30 @@ Each domain follows the same four-file pattern — model, store, handler, routes
 Copy `.env.example` to `.env.local` and fill in values.
 
 ```bash
-# Start the server
 go run ./cmd/server
+```
 
-# Run migrations
-go run ./cmd/migrate up
-go run ./cmd/migrate down   # rolls back one step
+No migration step — indexes are created automatically on first connect.
 
-# Run tests
+```bash
 go test ./...
 ```
 
 ---
 
-## Migrations
-
-Migration files live in `db/migrations/` and follow golang-migrate naming:
-
-```
-000001_create_things.up.sql
-000001_create_things.down.sql
-```
-
----
-
-## Database Queries (sqlc)
-
-Write your schema in `db/schema.sql` and named queries in `db/queries/`. Then from the `db/` directory:
-
-```bash
-sqlc generate
-```
-
-This compiles your SQL into type-safe Go in `db/generated/`. The output is committed — no tooling required to build or run the service after generation.
-
----
-
 ## Testing
 
-Integration tests spin up a real Postgres container via [testcontainers](https://testcontainers.com) — the database is never mocked. `TestMain` handles the container lifecycle; individual tests get a real store backed by a real schema.
-
-The `example/` package includes a test skeleton with `t.Skip(...)` placeholders. Remove the skips once store methods are implemented.
-
-Unit tests are written for pure logic with no database dependency — calculations, parsing utilities, and the like. Not for "does this handler call the store."
+Integration tests spin up a real MongoDB container via [testcontainers](https://testcontainers.com) — the database is never mocked. `TestMain` handles the container lifecycle; individual tests operate against a real collection with real indexes.
 
 ---
 
 ## Environment Variables
 
-| Variable | Description |
-|---|---|
-| `PORT` | HTTP port (defaults to 8080) |
-| `DATABASE_URL` | Postgres connection string |
-| `JWT_PUBLIC_KEY` | RSA public key PEM for validating JWTs |
-| `ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins |
+| Variable          | Description                                                        |
+| ----------------- | ------------------------------------------------------------------ |
+| `PORT`            | HTTP port (defaults to `8080`)                                     |
+| `MONGODB_URI`     | MongoDB connection string                                          |
+| `DB_NAME`         | MongoDB database name (defaults to `tracer`)                       |
+| `JWT_PUBLIC_KEY`  | RSA public key PEM for validating JWTs issued by go-auth           |
+| `SERVICE_KEY`     | Shared secret required on `POST /spans` via `X-Service-Key` header |
+| `ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins                       |
