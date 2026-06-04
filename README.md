@@ -1,6 +1,6 @@
 # go-tracer
 
-A lightweight distributed tracing collector built as part of the [personal-enterprise](https://github.com/Strangebrewer/personal-enterprise) portfolio project. Services emit spans fire-and-forget after each operation; the frontend polls this service to retrieve the full trace and render it as a live request timeline.
+A lightweight distributed tracing collector built as part of my portfolio project. Services emit spans fire-and-forget after each operation; the frontend polls this service to retrieve the full trace and render it as a live request timeline.
 
 ---
 
