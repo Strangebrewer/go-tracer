@@ -2,7 +2,7 @@ package config
 
 import (
 	"os"
-"strings"
+	"strings"
 
 	"github.com/joho/godotenv"
 )

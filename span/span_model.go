@@ -7,17 +7,17 @@ import (
 )
 
 type Span struct {
-	ID           bson.ObjectID `bson:"_id,omitempty"          json:"-"`
-	TraceID      string             `bson:"traceId"                json:"traceId"`
-	SpanID       string             `bson:"spanId"                 json:"spanId"`
-	ParentSpanID string             `bson:"parentSpanId,omitempty" json:"parentSpanId,omitempty"`
-	Service      string             `bson:"service"                json:"service"`
-	Operation    string             `bson:"operation"              json:"operation"`
-	Status       string             `bson:"status"                 json:"status"`
-	Error        *string            `bson:"error,omitempty"        json:"error"`
-	StartTime    time.Time          `bson:"startTime"              json:"startTime"`
-	EndTime      time.Time          `bson:"endTime"                json:"endTime"`
-	Metadata     map[string]any     `bson:"metadata,omitempty"     json:"metadata"`
+	ID           bson.ObjectID  `bson:"_id,omitempty"          json:"-"`
+	TraceID      string         `bson:"traceId"                json:"traceId"`
+	SpanID       string         `bson:"spanId"                 json:"spanId"`
+	ParentSpanID string         `bson:"parentSpanId,omitempty" json:"parentSpanId,omitempty"`
+	Service      string         `bson:"service"                json:"service"`
+	Operation    string         `bson:"operation"              json:"operation"`
+	Status       string         `bson:"status"                 json:"status"`
+	Error        *string        `bson:"error,omitempty"        json:"error"`
+	StartTime    time.Time      `bson:"startTime"              json:"startTime"`
+	EndTime      time.Time      `bson:"endTime"                json:"endTime"`
+	Metadata     map[string]any `bson:"metadata,omitempty"     json:"metadata"`
 }
 
 type CreateSpanInput struct {
